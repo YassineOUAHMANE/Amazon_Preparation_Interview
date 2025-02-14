@@ -1,0 +1,83 @@
+--> Aprés 15 heures, le 12 mai 3961
+--> 7 personnes 
+--> Chercher les création de chat une semaine avant le vol au plus 
+
+with create_chat(
+Select distinct s.name
+from Onlinechat o 
+join studentschatsmap c on o.CHATID = c.chatid 
+join student s on c.studentid = s.STUDENTID
+where createdat between '3961-05-05' and '3961-05-12')
+
+
+--> 7 personnes ont des notes supérieur à la median de l'école
+
+-- Calculate the median grade
+
+WITH RankedGrades AS (
+    SELECT avggrade,
+           ROW_NUMBER() OVER (ORDER BY avggrade) AS RowAsc,
+           ROW_NUMBER() OVER (ORDER BY avggrade DESC) AS RowDesc
+    FROM Student
+),
+GradeCounts AS (
+    SELECT COUNT(*) AS TotalCount
+    FROM Student
+),
+MedianGrades AS (
+    SELECT avggrade
+    FROM RankedGrades, GradeCounts
+    WHERE RowAsc = (TotalCount + 1) / 2
+       OR RowDesc = (TotalCount + 1) / 2
+       OR (TotalCount % 2 = 0 AND (RowAsc = TotalCount / 2 OR RowDesc = TotalCount / 2))
+),
+
+notes_student as (
+   select distinct s.name
+   from student s
+   where AVGGRADE > (SELECT AVG(avggrade) AS MedianGrade
+FROM MedianGrades)
+)
+
+select * from notes_student;
+
+
+
+
+--> Chemistry supply room, l'étudiant qui a volé l'acide reste dans la salle durée anormalement longue
+
+with one_of_them as(
+SELECT s.name
+FROM roomaccesshistory ra join room r on r.ROOMID = ra.ROOMID
+join student s on s.studentid = ra.STUDENTID
+WHERE roomname = 'Chemistry supply room' and TIMESTAMPDIFF(HOUR, enteredat, exitedat) > 1 and enteredat > '3961-05-05') ;
+
+--> Au moins 3 personnes qui n'ont pas de cours l'heure du vol 
+,3_mutants(
+SELECT distinct s.name
+FROM schedule sc
+JOIN class c ON sc.classID = c.classID
+JOIN student s ON c.classID = s.classID
+WHERE sc.day ='Friday' AND sc.hour!=15) ;
+
+
+--> 2 parmi les 7 sont très grands (height)
+
+,heights as (
+select name,height 
+from student
+order by height desc
+limit 2;);
+
+
+--> L'un des étudiant du groupe à un M et W dans son nom
+,M_W as(
+select name 
+from student 
+where name like '%M%W%' or name like '%W%M%');
+
+-->Mutants 3 personnes vivant ensemble (le statut dans leur chambre)
+select  bedroomid,name
+from student 
+where bedroomid is not null
+group by bedroomid,name
